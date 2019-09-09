@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import firebase from '../../firebase';
 import { Grid, Form, Segment, Button, Header, Message, Icon } from 'semantic-ui-react';
 import { Link } from 'react-router-dom';
+import md5 from 'md5';
 
 class Register extends Component {
     state = {
@@ -10,7 +11,8 @@ class Register extends Component {
         password: '',
         passwordConfirmation: '',
         errors: [],
-        loading: false
+        loading: false,
+        usersRef: firebase.database().ref('users')
     };
 
     handleChange = event => {
@@ -63,9 +65,23 @@ class Register extends Component {
             firebase
                 .auth()
                 .createUserWithEmailAndPassword(this.state.email, this.state.password)
-                .then(createUser => {
-                    console.log(createUser)
-                    this.setState({ loading: false })
+                .then(createdUser => {
+                    console.log(createdUser)
+                    createdUser.user.updateProfile({
+                        displayName: this.state.username,
+                        photoURL: `http://gravatar.com/avatar/${md5(createdUser.user.email)}?d=identicon`
+                    })
+                    .then(() => {
+                        // this.setState({ loading: false })
+                        this.saveUser(createdUser)
+                            .then(() => {
+                                console.log('User saved');
+                            })
+                    })
+                    .catch(err => {
+                        console.log(err)
+                        this.setState({ error: this.state.errors.concat(err), loading: false })
+                    })
                 })
                 .catch(err => {
                     console.log(err);
@@ -78,13 +94,20 @@ class Register extends Component {
         return errors.some(error => error.message.toLowerCase().includes(inputName)) ? 'error' : ''
     }
 
+    saveUser = (createdUser) => {
+        return this.state.usersRef.child(createdUser.user.uid).set({
+            name: createdUser.user.displayName,
+            avatar: createdUser.user.photoURL
+        })
+    }
+
     render() {
         const { username, email, password, passwordConfirmation, errors, loading } = this.state;
 
         return (
             <Grid textAlign='center' verticalAlign='middle' className='app'>
                 <Grid.Column style={{ maxWidth: 450 }}>
-                    <Header as='h2' icon color='orange' textAlign='center'>
+                    <Header as='h1' icon color='orange' textAlign='center'>
                         <Icon name='puzzle piece' color='orange'/>
                         Register for DevChat
                     </Header>
