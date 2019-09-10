@@ -1,19 +1,27 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 import { BrowserRouter as Router, Switch, Route, withRouter } from 'react-router-dom';
-import App from './components/App';
-import * as serviceWorker from './serviceWorker';
 import firebase from './firebase';
+import { createStore } from 'redux';
+import { Provider, connect } from 'react-redux';
+import rootReducer from './reducers';
+import { composeWithDevTools } from 'redux-devtools-extension';
+
+import App from './components/App';
 
 import 'semantic-ui-css/semantic.min.css';
 
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
+import { setUser } from './actions';
+
+const store = createStore(rootReducer, composeWithDevTools());
 
 class Root extends Component {
     componentDidMount() {
         firebase.auth().onAuthStateChanged(user => {
             if (user) {
+                this.props.setUser(user);
                 this.props.history.push('/');
             }
         })
@@ -30,11 +38,13 @@ class Root extends Component {
     }
 }
 
-const RootWithAuth = withRouter(Root);
+const RootWithAuth = withRouter(connect(null, { setUser })(Root));
 
-ReactDOM.render(<Router><RootWithAuth /></Router>, document.getElementById('root') );
-
-// If you want your app to work offline and load faster, you can change
-// unregister() to register() below. Note this comes with some pitfalls.
-// Learn more about service workers: https://bit.ly/CRA-PWA
-serviceWorker.unregister();
+ReactDOM.render(
+    <Provider store={store}>
+        <Router>
+            <RootWithAuth />
+        </Router>
+    </Provider>, 
+    document.getElementById('root') 
+);
